@@ -2,7 +2,7 @@
 // @name         WordPress Quick Navigate
 // @namespace    https://wpcomhappy.wordpress.com/
 // @icon         https://raw.githubusercontent.com/soufianesakhi/feedly-filtering-and-sorting/master/web-ext/icons/128.png
-// @version      0.291
+// @version      0.30
 // @description  WordPress Quick Navigate
 // @author       Siew "@xizun"
 // @match        https://*/*
@@ -23,7 +23,8 @@
 // @updateURL    https://github.com/Automattic/support-helper-tools/raw/main/miscellaneous/WordPressQuickNavigate.user.js
     const options = {
         DEBUG: true,
-        ADD_MISSING_URLS: false
+        ADD_MISSING_URLS: false,
+        DISCOVER_ONSCREEN_URLS: true
     };
     let domain;
 
@@ -1858,6 +1859,54 @@
         GM_setValue(ITEMS, items);
     }
 
+    function addOnscreenUrls(items) {
+        dlog('addOnscreenUrls+');
+        const root = $('ul#adminmenu');
+
+        function getA(elem, prefix) {
+            const _as = $(elem).find('> a');
+            if (_as.length > 0) {
+                const _a = $(_as).eq(0);
+                const title = `${prefix} ${_a.text()}`;
+                d = {url: _a.attr('href'),
+                    title: title};
+                items.push(d);    
+                dlog(`addOnscreenUrl + ${title}`);
+                return title;
+            }
+            return false;
+        }
+
+        function getLi(elem) {
+            const lis = $(elem).find('> li');
+            return lis
+        }
+
+        function getUl(elem) {
+            const uls = $(elem).find('> ul');
+            return uls
+        }
+
+        function getLiA(lis, prefix) {
+            dlog('getLiA+');
+            for (const li of lis) {
+                const _prefix = getA(li, prefix);
+                if (_prefix) {
+                    const uls = getUl(li);
+                    for (const ul of uls) {
+                        const lis = getLi(ul);
+                        if (lis.length > 0) {
+                            getLiA(lis, `${_prefix} > `);
+                        }
+                    }
+                }
+            }
+    
+        }
+        const lis = getLi(root);
+        getLiA(lis, '>');
+    }
+
     function getItems(json=JSON) {
         const items = _gm_getValue(ITEMS, []);
         if (items.length == 0) {
@@ -1872,6 +1921,9 @@
                 addMisingUrls(items, json);
             }
         }
+        if (options.DISCOVER_ONSCREEN_URLS) {
+            addOnscreenUrls(items);
+        }        
         return items;
     }
 
@@ -2379,3 +2431,6 @@
 // version 0.29
 // . added vue-swal, https://sweetalert.js.org/guides/
 // . added schedule.happy.tools in EXCLUDE_DOMAIN
+
+// version 0.30
+// . added addOnscreenUrls
